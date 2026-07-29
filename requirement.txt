@@ -1,0 +1,12 @@
+google-generativeai
+websockets
+python-dotenv
+fastapi
+uvicorn
+sqlalchemy
+twilio
+SpeechRecognition
+pydub
+gTTS
+deepgram-sdk
+pydantic

@@ -4,7 +4,7 @@ sqlalchemy==2.0.51
 pydantic==2.11.5
 python-dotenv==1.1.0
 twilio==9.10.9
-websockets==16.1.1
+websockets==14.1
 aiohttp==3.12.0
 protobuf==6.33.2
 google-genai==1.2.0

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 import os
 from database import Base, engine
 from model import Lead, Company, BusinessSettings
@@ -20,8 +20,23 @@ from auth import (
 app = FastAPI()
 ADMIN_SECRET = os.getenv("ADMIN_SECRET", "change-this-admin-secret")
 
-# Create database tables
+# Create database tables (only creates tables that don't exist yet —
+# does NOT add new columns to existing tables)
 Base.metadata.create_all(bind=engine)
+
+# =============================================================================
+# NEW — lightweight auto-migration. Base.metadata.create_all() above does not
+# add new columns to tables that already exist, so if the 'email' column is
+# missing on the existing 'leads' table (created before this change), add it
+# here automatically on startup. Safe to leave in permanently — it just does
+# nothing once the column already exists.
+# =============================================================================
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE leads ADD COLUMN email VARCHAR"))
+        conn.commit()
+    except Exception:
+        pass  # column already exists — nothing to do
 
 # Enable CORS
 app.add_middleware(
@@ -126,7 +141,7 @@ def get_leads(current_company: Company = Depends(get_current_company), db: Sessi
             "id": lead.id,
             "customer_name": lead.customer_name,
             "phone_number": lead.phone_number,
-            "email": lead.email,  # NEW — email ab response mein aayegi
+            "email": lead.email,
             "issue": lead.issue,
             "status": lead.status,
             "appointment_time": lead.appointment_time,
@@ -216,14 +231,11 @@ async def vapi_create_lead(api_key: str, request: Request, db: Session = Depends
     tool_call = body["message"]["toolCalls"][0]
     args = tool_call["function"]["arguments"]
 
-    # NOTE: estimated_value is coming directly from the AI (system prompt
-    # decides the price, not a backend pricing table). This matches the
-    # approach you're currently using — no pricing-table lookup here.
     new_lead = Lead(
         company_id=company.id,
         customer_name=args.get("customer_name"),
         phone_number=args.get("phone_number"),
-        email=args.get("email"),  # NEW
+        email=args.get("email"),
         issue=args.get("issue"),
         status=args.get("status", "new"),
         appointment_time=args.get("appointment_time"),

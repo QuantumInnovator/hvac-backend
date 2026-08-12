@@ -18,7 +18,7 @@ from auth import (
 
 
 app = FastAPI()
-ADMIN_SECRET = os.getenv("ADMIN_SECRET", "change-this-admin-secret")
+ADMIN_SECRET = "raffay123"
 
 # Create database tables (only creates tables that don't exist yet —
 # does NOT add new columns to existing tables)

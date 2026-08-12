@@ -271,3 +271,78 @@ def list_all_companies(secret: str, db: Session = Depends(get_db)):
         }
         for c in companies
     ]
+
+
+# =============================================================================
+# NEW — Admin can view ANY company's dashboard / calls / settings using just
+# the admin secret, without needing that company's own login token.
+# =============================================================================
+
+def _check_admin(secret: str):
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+
+
+@app.get("/admin/companies/{company_id}/dashboard")
+def admin_company_dashboard(company_id: int, secret: str, db: Session = Depends(get_db)):
+    _check_admin(secret)
+
+    q = db.query(Lead).filter(Lead.company_id == company_id)
+    total_calls = q.count()
+    booked_jobs = q.filter(Lead.status == "booked").count()
+    callbacks = q.filter(Lead.status == "callback").count()
+    revenue = (
+        db.query(func.sum(Lead.estimated_value))
+        .filter(Lead.company_id == company_id)
+        .scalar()
+        or 0
+    )
+
+    return {
+        "revenue": revenue,
+        "answered_calls": total_calls,
+        "jobs_booked": booked_jobs,
+        "callbacks": callbacks,
+    }
+
+
+@app.get("/admin/companies/{company_id}/leads")
+def admin_company_leads(company_id: int, secret: str, db: Session = Depends(get_db)):
+    _check_admin(secret)
+
+    leads = db.query(Lead).filter(Lead.company_id == company_id).all()
+    return [
+        {
+            "id": lead.id,
+            "customer_name": lead.customer_name,
+            "phone_number": lead.phone_number,
+            "email": lead.email,
+            "issue": lead.issue,
+            "status": lead.status,
+            "appointment_time": lead.appointment_time,
+            "estimated_value": lead.estimated_value,
+        }
+        for lead in leads
+    ]
+
+
+@app.get("/admin/companies/{company_id}/settings")
+def admin_company_settings(company_id: int, secret: str, db: Session = Depends(get_db)):
+    _check_admin(secret)
+
+    settings = db.query(BusinessSettings).filter(
+        BusinessSettings.company_id == company_id
+    ).first()
+
+    if not settings:
+        return None
+
+    return {
+        "company_name": settings.company_name,
+        "owner_name": settings.owner_name,
+        "business_phone": settings.business_phone,
+        "forward_number": settings.forward_number,
+        "business_email": settings.business_email,
+        "working_hours": settings.working_hours,
+        "greeting_script": settings.greeting_script,
+    }

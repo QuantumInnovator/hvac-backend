@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import os
 from database import Base, engine
 from model import Lead, Company, BusinessSettings
@@ -125,6 +126,7 @@ def get_leads(current_company: Company = Depends(get_current_company), db: Sessi
             "id": lead.id,
             "customer_name": lead.customer_name,
             "phone_number": lead.phone_number,
+            "email": lead.email,  # NEW — email ab response mein aayegi
             "issue": lead.issue,
             "status": lead.status,
             "appointment_time": lead.appointment_time,
@@ -136,8 +138,6 @@ def get_leads(current_company: Company = Depends(get_current_company), db: Sessi
 
 @app.get("/dashboard")
 def dashboard(current_company: Company = Depends(get_current_company), db: Session = Depends(get_db)):
-    from sqlalchemy import func
-
     q = db.query(Lead).filter(Lead.company_id == current_company.id)
 
     total_calls = q.count()
@@ -216,14 +216,18 @@ async def vapi_create_lead(api_key: str, request: Request, db: Session = Depends
     tool_call = body["message"]["toolCalls"][0]
     args = tool_call["function"]["arguments"]
 
+    # NOTE: estimated_value is coming directly from the AI (system prompt
+    # decides the price, not a backend pricing table). This matches the
+    # approach you're currently using — no pricing-table lookup here.
     new_lead = Lead(
         company_id=company.id,
         customer_name=args.get("customer_name"),
         phone_number=args.get("phone_number"),
+        email=args.get("email"),  # NEW
         issue=args.get("issue"),
         status=args.get("status", "new"),
         appointment_time=args.get("appointment_time"),
-        estimated_value=args.get("estimated_value"),
+        estimated_value=args.get("estimated_value", 0),
     )
     db.add(new_lead)
     db.commit()
@@ -237,6 +241,8 @@ async def vapi_create_lead(api_key: str, request: Request, db: Session = Depends
             }
         ]
     }
+
+
 @app.get("/admin/companies")
 def list_all_companies(secret: str, db: Session = Depends(get_db)):
     if secret != ADMIN_SECRET:

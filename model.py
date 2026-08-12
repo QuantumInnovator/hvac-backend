@@ -1,7 +1,3 @@
-# === Add this to model.py ===
-# This replaces the single-tenant BusinessSettings idea with a proper
-# multi-tenant structure: every Lead and every Settings row belongs to a Company.
-
 import uuid
 from datetime import datetime
 
@@ -36,6 +32,7 @@ class Lead(Base):
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     customer_name = Column(String, nullable=True)
     phone_number = Column(String, nullable=True)
+    email = Column(String, nullable=True)  # NEW — so the AI-collected email shows on screen
     address = Column(String, nullable=True)
     issue = Column(String, nullable=True)
     urgency = Column(String, default="normal")

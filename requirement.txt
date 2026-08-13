@@ -10,3 +10,4 @@ pydub
 gTTS
 deepgram-sdk
 pydantic
+psycopg2-binary

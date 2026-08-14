@@ -9,10 +9,13 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 # it falls back to the local SQLite file so local development still works.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./hvac_leads.db")
 
-# Railway's Postgres URL sometimes starts with "postgres://" (old-style),
-# but SQLAlchemy needs "postgresql://" — this fixes it automatically if needed.
+# Railway's Postgres URL starts with "postgres://" or "postgresql://" —
+# we rewrite it to use the psycopg3 driver ("postgresql+psycopg://"),
+# which is more reliable in Railway's build environment than psycopg2.
 if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
 # connect_args is only needed for SQLite — Postgres doesn't need it.
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
